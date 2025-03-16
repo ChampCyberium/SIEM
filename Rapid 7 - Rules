@@ -1,0 +1,98 @@
+from(
+    event_type = "process_start_event"
+)
+where (
+    process.name IN [
+        "chrome.exe",
+        "msedge.exe",
+        "firefox.exe",
+        "opera.exe",
+        "brave.exe",
+        "vivaldi.exe"
+    ]
+    AND
+    process.parent.name IN [
+        "explorer.exe",
+        "cmd.exe",
+        "powershell.exe",
+        "wscript.exe",
+        "cscript.exe",
+        "regsvr32.exe"
+    ]
+    AND
+    NOT process.exe_path ICONTAINS-ANY [
+        "\\Program Files\\",
+        "\\Program Files (x86)\\",
+        "\\Windows\\system32\\",
+        "\\Windows\\syswow64\\"
+    ]
+    AND
+    (
+        process.exe_file.signing_status != NOCASE("SIGNED_VALID")
+        OR
+        process.exe_file.orig_filename ICONTAINS-ANY [
+            "stealer.exe",
+            "lumma.exe",
+            "info_stealer.exe"
+        ]
+    )
+    AND
+    process.command_line ICONTAINS-ANY [
+        "--disable-features",
+        "--remote-debugging-port=",
+        "--load-extension=",
+        "--user-data-dir="
+    ]
+)
+
+OR
+
+from(
+    event_type = "network_connection"
+)
+where (
+    destination.port IN [2222, 4444, 8080, 9090]
+    AND
+    NOT detection_context.is_source_address_local = TRUE
+    AND
+    NOT detection_context.is_destination_address_internal = TRUE
+    AND
+    network.protocol IN ["http", "https", "ftp"]
+    AND
+    (
+        request.http_user_agent ICONTAINS-ANY [
+            "curl",
+            "python-requests",
+            "wget",
+            "http-client"
+        ]
+        OR
+        request.http_method IN ["POST", "PUT"]
+    )
+)
+
+OR
+
+from(
+    event_type = "file_creation"
+)
+where (
+    file.path ICONTAINS-ANY [
+        "\\AppData\\Local\\Temp\\",
+        "\\AppData\\Roaming\\",
+        "\\AppData\\Local\\"
+    ]
+    AND
+    file.extension IN ["log", "txt", "dat", "ldb"]
+    AND
+    file.name ICONTAINS-ANY [
+        "passwords",
+        "cookies",
+        "wallets",
+        "tokens",
+        "history",
+        "logins"
+    ]
+    AND
+    file.size > 5000
+)
