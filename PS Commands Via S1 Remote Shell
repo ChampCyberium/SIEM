@@ -1,0 +1,83 @@
+Volume:
+ 
+Get-PSDrive 								         - Only Drives  ( C: D: HKLM: ENV: etc )
+Get-PSDrive -PSProvider FileSystem | Select-Object -ExpandProperty Name          - clean list of drive letters only
+Get-PSDrive -PSProvider FileSystem                                               - list all Drives with volume stats
+Get-WmiObject Win32_LogicalDisk				                         - List detailed OS-level info about logical disks (partitions, drives, removable storage,network drives, etc.) using WMI ie winmgmt
+
+---------------
+
+fsutil fsinfo drives	                                                         - Lists all drives on the system
+fsutil fsinfo drivetype <drive>	                                                 - Displays drive type (fixed, removable, etc.)
+fsutil fsinfo volumeinfo <drive>	                                         - Displays detailed info about the volume
+fsutil fsinfo ntfsinfo <drive>	                                                 - Displays NTFS-specific details (sectors, clusters, MFT, etc.)
+fsutil fsinfo sectorinfo <drive>	                                         - Displays sector size information
+
+<------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+
+Removable:
+
+DriveType values:
+2 → Removable (USB sticks, external HDDs, SD cards, etc.)
+3 → Local fixed disk
+4 → Network drive
+5 → CD-ROM
+
+
+-> Get-WmiObject Win32_LogicalDisk | Where-Object { $_.DriveType -eq 2 }     or     Get-CimInstance Win32_LogicalDisk | Where-Object { $_.DriveType -eq 2 }
+
+-> Get-CimInstance Win32_LogicalDisk | Where-Object { $_.DriveType -eq 2 } | 
+Select-Object DeviceID, VolumeName, @{Name="Size(GB)";Expression={[math]::Round($_.Size/1GB,2)}}, @{Name="Free(GB)";Expression={[math]::Round($_.FreeSpace/1GB,2)}}
+ // for Datailed volume stats 
+
+->(Get-CimInstance Win32_LogicalDisk | Where-Object { $_.DriveType -eq 2 }).DeviceID
+
+---------------
+
+->Get-Volume | Where-Object DriveType -eq 'Removable' | Select-Object -ExpandProperty DriveLetter
+
+->Get-Volume | Where-Object DriveType -eq 'Removable' | 
+Select-Object DriveLetter, FileSystemLabel, @{Name="Size(GB)";Expression={[math]::Round($_.Size/1GB,2)}}, @{Name="Free(GB)";Expression={[math]::Round($_.SizeRemaining/1GB,2)}}
+
+
+<--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+
+Schedule Tasks
+
+Get-ScheduledTask | Select-Object TaskName, TaskPath, State   -> List all Task names 
+
+
+Get-ScheduledTask | Where-Object {$_.TaskName -like "*example*"}  -> To find a specific suspicious task
+
+Get-ScheduledTask | ForEach-Object {$_ | Get-ScheduledTaskInfo}  -> detailed info (like the action it runs)
+
+
+<------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+
+Reg Keys
+
+Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run"   -> (current user)
+
+Get-ItemProperty "HKLM:\Software\Microsoft\Windows\CurrentVersion\Run"   -> (all users)
+
+Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Run" | Select-Object * | Findstr /i "auto_punch" -> search for a specific suspicious file
+
+C:\Users\<User>\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup
+
+C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup
+
+Get-ChildItem "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup"
+
+
+<------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------->
+
+Quick Powershell commands to search for files 
+
+Test-Path "C:\Path\To\filename.exe"    -----> True/False
+Get-Item "C:\ProgramData\filename.exe" -ErrorAction SilentlyContinue  ------> If exist then results if not then File does not exist: - No output
+
+Get-ChildItem "C:\ProgramData" -Filter "filename.exe" -File -Recurse -Depth 2 -ErrorAction SilentlyContinue     ------> checks 2 level sub folders
+
+Get-ChildItem "C:\Users\*\Downloads" -Filter "filename.exe" -File -ErrorAction SilentlyContinue
+
+Get-ChildItem "C:\Program Files\WindowsApps" -Filter "*WhatsApp*" -ErrorAction SilentlyContinue   --------> for Windows Apps
